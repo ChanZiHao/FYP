@@ -1,0 +1,166 @@
+#include <SoftwareSerial.h>
+#include "Shield2AMotor.h"
+#include "SharpIR.h"
+#define model 430 
+#define SENSOR 2 // define pint 2 for sensor
+#define SENSOR2 3 // define pin 3 as for sensor2
+//#define In3 8 //CW is defined as pin #8//
+//#define In4 9 //CCW is defined as pin #9//
+#define In1 8 //CW is defined as pin #8//
+#define In2 9 //CCW is defined as pin #9//
+#define IR A0
+#define IR2 A1
+#define PL 12
+SharpIR SharpIR2(IR2, model);
+SoftwareSerial EEBlue(10, 11); // RX | TX
+SharpIR SharpIR(IR, model);
+int Z1;
+// Connect 4 pin on SHIELD-2AMOTOR to "Signed Magnitude" mode
+Shield2AMotor actuator(SIGNED_MAGNITUDE);
+
+signed int actuator1Speed, actuator2Speed;
+
+void setup()
+{
+  actuator1Speed=0;
+  actuator2Speed=0;
+  pinMode(PL, OUTPUT);
+  pinMode(In1, OUTPUT); //Set CW as an output//
+  pinMode(In2, OUTPUT); //Set CCW as an output//
+  pinMode(SENSOR, INPUT_PULLUP);// define pin as Input  sensor
+  pinMode(SENSOR2, INPUT_PULLUP);// define pin as Input  sensor
+  digitalWrite(In1, HIGH);
+  digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor 
+  Serial.begin(9600);// setup Serial Monitor to display information
+  EEBlue.begin(9600);
+  
+ // pinMode(ACTION, OUTPUT);// define pin as OUTPUT for ACTION
+  int I =digitalRead(In1);
+  int I2 =digitalRead(In2);
+  Serial.println(I);
+  Serial.println(I2);
+}
+
+void Bluetooth()
+{
+  if(EEBlue.available()>0){
+    char action=EEBlue.read();
+    if(action=='Y'){
+      digitalWrite(In1, LOW);
+      digitalWrite(In2, HIGH);//Activate the relay one direction, they must be different to move the motor
+      delay(5000);
+    }
+    if(action=='N'){ 
+      Z1=2;
+      digitalWrite(In1, LOW);
+      digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor   
+      delay(5000);
+      //digitalWrite(In3, LOW);
+     // digitalWrite(In4, HIGH);//Deactivate both relays to brake the motor
+    }
+ }
+}
+
+void loop()
+{
+  
+  int L =digitalRead(SENSOR);
+  int L2 =digitalRead(SENSOR2);
+  int Z =digitalRead(PL);
+  int dis=SharpIR.distance();
+  int dis2=SharpIR2.distance();
+  digitalWrite(PL, LOW);
+  //if(L == 0 && L2 == 1){
+  if(L == 0){
+  digitalWrite(In1, LOW);
+  digitalWrite(In2, HIGH);//Activate the relay one direction, they must be different to move the motor
+  delay(6000);
+  }
+  //float volts = analogRead(sensor)*0.0048828125;  // value from sensor * (5/1024)
+  //int distance = 13*pow(volts, -1); // worked out from datasheet graph
+  Serial.print("Distance: ");   // print the distance
+  Serial.println(dis);
+  delay(500);
+  Serial.print("Distance2: ");   // print the distance
+  Serial.println(dis2);
+  delay(500);
+  if (dis2 <= 14 && dis ==18){
+  digitalWrite(In1, HIGH);
+  digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor
+  EEBlue.println("L");
+   digitalWrite(PL, LOW);
+   Z1=Z;
+  }
+   if (dis <= 15){
+    //delay(2000);
+    digitalWrite(In1, HIGH);
+    digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor 
+    EEBlue.println("P");
+    digitalWrite(PL, HIGH);
+     Z1=Z;
+  }
+  else if (dis > 15 && dis <= 17)
+  {
+    //Serial.print("Distance: ");   // print the distance
+    //Serial.println(distance);
+    //delay(2000);
+    digitalWrite(In1, HIGH);
+    digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor
+    EEBlue.println("L");
+    digitalWrite(PL, LOW);  
+     Z1=Z; 
+  }
+  Serial.println(Z1);
+  //delay(2000);
+  Bluetooth();
+  
+  if(L2 == 0 && Z1 == 1 )
+  {
+  actuator.control(100, 0);
+  //digitalWrite(In3, LOW);
+  //digitalWrite(In4, HIGH);//Activate the relay one direction, they must be different to move the motor
+  delay(2000);
+  digitalWrite(In1, HIGH);
+  digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor
+  delay(16000);
+  actuator.control(-100, 0);
+  delay(18000);
+  }else if (L2 == 0 && Z1 == 0)
+  {
+  delay(2000);  
+  actuator.control(0,100);
+  //digitalWrite(In3, LOW);
+  //digitalWrite(In4, HIGH);//Activate the relay one direction, they must be different to move the motor
+  delay(2000);
+  digitalWrite(In1, HIGH);
+  digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor
+  delay(16000);
+  actuator.control(0,-100);
+  delay(18000);
+  } 
+  //digitalWrite(In1, HIGH); 
+  //digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor 
+  //delay(5000);
+  //digitalWrite(In1, LOW);
+  //digitalWrite(In2, HIGH);
+  //delay(7000);
+  //digitalWrite(In1, HIGH);
+  //digitalWrite(In2, HIGH);
+  //delay(1300);
+  //actuator.control(-100, 0);
+  //delay(15000);
+  //Serial.println(L);
+  //Serial.println(L2);
+  }
+  //else if(L2==0){    //??If things stop in front of L2, it will stop moving although bluetooth activates the motor
+  //digitalWrite(In1, HIGH); 
+  //digitalWrite(In2, HIGH);//Deactivate both relays to brake the motor 
+   //Bluetooth();
+  //}
+  //Bluetooth();
+  
+  //actuator.control(100, 0);//Linear actuator by using motor driver
+  //delay(10000);
+  //actuator.control(-100, 0);
+  //delay(10000);
+//}
